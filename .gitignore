@@ -1,0 +1,4 @@
+.config
+.env
+build/
+target/
