@@ -159,9 +159,11 @@ TCP packets redirected to local relay: no
 TCP relay accepts on local 16000: no
 ```
 
-This means the current WinDivert transparent TCP rewrite path is not a working proxy path for Mobile Hotspot clients. The SOCKS5/HTTPS proxy connector preflight works, but web TCP from the phone does not reach the transparent connector because the local relay is never accepted.
+This means the current WinDivert transparent TCP rewrite path is not the primary proxy path for Mobile Hotspot clients. The SOCKS5/HTTPS proxy connector preflight works, but web TCP from the phone does not reach the transparent connector because the local relay is never accepted.
 
-Gateway mode is the current working client proxy path. It makes DNS A records resolve to the hotspot gateway, accepts client TCP on local ports 80/443, extracts HTTP Host or TLS SNI, then opens the configured SOCKS5/HTTPS upstream proxy.
+Gateway mode is the current client proxy design. It makes DNS A records resolve to the hotspot gateway, accepts client TCP on local ports 80/443, extracts HTTP Host or TLS SNI, then opens the configured SOCKS5/HTTPS upstream proxy.
+
+This does not decrypt TLS. Not decrypting TLS is an intentional security property: the gateway uses SNI only for routing and then relays encrypted bytes.
 
 Still pending for the Windows implementation:
 
@@ -170,7 +172,7 @@ upstream STA connection profile selection
 wiFiControl capability/package requirement check
 target private hotspot adapter selection when specified
 live restart-window validation of native WinRT configure/start/stop
-working WinDivert TCP interception for joined Wi-Fi clients, only if gateway mode cannot cover required clients
+WinDivert/WFP original-destination capture for direct-IP/no-SNI flows, only if required clients need that traffic class
 ```
 
 ## Integration Test Goal

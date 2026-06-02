@@ -169,13 +169,25 @@ Log file: target\hproxy-gateway.log
 Upstream proxy: socks5://192.168.0.104:8120
 ```
 
-## Limitations
+## Security And Compatibility Model
 
-- Gateway DNS/SNI mode is the practical working path today.
-- The older WinDivert transparent TCP rewrite path is implemented as a foundation but is not the primary live path for Windows Mobile Hotspot NAT.
-- HTTPS traffic is not decrypted or modified. HProxy uses TLS SNI to choose the upstream destination and then relays bytes.
-- Clients that do not use DNS, do not send SNI, or pin direct IP addresses may not be proxyable through gateway mode.
-- UDP proxying beyond DNS is intentionally conservative. QUIC UDP/443 is dropped by policy so clients fall back to TCP/TLS.
+HProxy is designed as a tunnel gateway, not a TLS interception proxy.
+
+Intentional properties:
+
+- HTTPS is not decrypted, modified, or re-signed.
+- No custom certificate authority is installed on clients.
+- No TLS MITM is required for normal HTTPS traffic.
+- Routing uses DNS plus HTTP Host or TLS SNI, then relays bytes through the configured upstream proxy.
+- QUIC UDP/443 is dropped by policy so clients fall back to TCP/TLS, where Host/SNI routing is observable without decrypting payloads.
+
+Current compatibility boundary:
+
+- Normal browser, phone, MCU, and vendor-device HTTP/HTTPS traffic works when it uses DNS and sends HTTP Host or TLS SNI.
+- A client that deliberately connects to a raw public IP without DNS and without SNI does not provide a hostname for gateway-mode routing.
+- Generic UDP is not tunnelled through HTTP(S) CONNECT. DNS is handled locally; other UDP remains conservative by design.
+
+The direct-IP/no-SNI case is the remaining routing extension. The design path for that is to combine gateway mode with a lower-layer original-destination capture path, such as a corrected WinDivert interception point or WFP callout. That extension should preserve the same no-MITM TLS property.
 
 ## Repository Layout
 
@@ -198,4 +210,3 @@ third_party/       vendored WinDivert runtime files
 - `docs/environment.md`
 - `docs/hotspot-control.md`
 - `docs/testing.md`
-

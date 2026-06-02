@@ -113,7 +113,7 @@ HttpsConnectConnector
 
 `redirector.rs` owns the redirector decision model and the WinDivert packet capture/rewrite boundary. The Windows packet loop now captures hotspot-client IPv4 traffic at `NETWORK inbound`, scoped to the discovered hotspot subnet, and rewrites DNS to the local DNS proxy. Live iPhone validation has confirmed DNS interception and DNS response forwarding.
 
-The currently working client proxy path is DNS/SNI gateway mode:
+The current client proxy design is DNS/SNI gateway mode:
 
 ```text
 client DNS A query -> hproxy DNS gateway answer: 192.168.137.1
@@ -123,7 +123,9 @@ hproxy opens SOCKS5 / HTTP CONNECT / HTTPS CONNECT upstream to that host
 hproxy relays bytes without TLS MITM
 ```
 
-The original WinDivert transparent TCP rewrite path remains experimental for Mobile Hotspot NAT. It is useful as a policy and packet-rewrite foundation, but live phone traffic did not reach the transparent relay reliably. Gateway mode is the current practical path for dumb Wi-Fi clients.
+No TLS interception is required or desired. HProxy uses the clear routing metadata already present in normal HTTP/TLS handshakes, then tunnels bytes through the configured upstream proxy.
+
+The original WinDivert transparent TCP rewrite path remains a foundation for direct-IP/no-SNI routing, but it is not the primary live path for Windows Mobile Hotspot NAT. Gateway DNS/SNI mode is the current product path for dumb Wi-Fi clients.
 
 The concrete Windows datapath dependency is vendored from NuGet package `Native.WinDivert`:
 
@@ -164,11 +166,11 @@ The intended transparent TCP path:
 8. Proxy relays bytes without TLS MITM.
 ```
 
-Current live state: this TCP path is designed and partly implemented, but not working for Windows Mobile Hotspot clients. The implementation should move to one of these concrete paths:
+Current live state: this TCP path is designed and partly implemented, but gateway DNS/SNI is the working product path for Windows Mobile Hotspot clients. Keep the lower-layer TCP path scoped to the traffic classes that gateway mode cannot infer from Host/SNI metadata:
 
 ```text
-working fallback: DNS/SNI gateway mode that returns the hotspot gateway from DNS and routes accepted 80/443 TCP by Host/SNI
-future preferred: WFP redirect/callout at the correct ALE/transport layer for Mobile Hotspot NAT
+primary current path: DNS/SNI gateway mode that returns the hotspot gateway from DNS and routes accepted 80/443 TCP by Host/SNI
+future extension: WinDivert or WFP original-destination capture for direct-IP/no-SNI flows
 ```
 
 DNS must also be intercepted because dumb clients may use hardcoded DNS servers such as `8.8.8.8`.
@@ -188,7 +190,7 @@ client A query -> synthetic A response for hotspot gateway
 client non-A query -> empty successful response
 ```
 
-This keeps MCU/client traffic on the local gateway path and avoids accidental IPv6 or HTTPS/SVCB bypasses.
+This keeps MCU/client traffic on the local gateway path and avoids accidental IPv6 or HTTPS/SVCB bypasses. It also preserves end-to-end TLS because the gateway only reads SNI and relays encrypted bytes.
 
 The default upstream is:
 

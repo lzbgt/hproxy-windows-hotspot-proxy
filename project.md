@@ -8,6 +8,8 @@ docs/environment.md
 docs/testing.md
 ```
 
+The active product design treats no-MITM TLS tunnelling as a feature. HProxy should route normal HTTPS by DNS plus TLS SNI and relay encrypted bytes. Lower-layer WinDivert/WFP work is only needed for traffic that does not expose routable metadata, such as direct-IP/no-SNI flows.
+
 Correct — the core product should **not** rely on client-side proxy settings at all.
 
 For MCU/vendor devices, the Windows software must be a **transparent proxy gateway**:
